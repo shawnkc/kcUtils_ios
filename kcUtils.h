@@ -2,17 +2,16 @@
 
 // Tricky Preprocessor macros to warn when using NSLog,
 // allow NSDebugLog() and NSLogAlways() with conditional variants.
-// allow NSDebugLog() and NSLogAlways() with conditional variants.
-//#define __SHORT_FILE__              strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
-//#define DO_PRAGMA(x)                _Pragma (#x)
-//#define NSLog(...)                  DO_PRAGMA(message ("Are you sure you mean NSLog?  Try NSDebugLog or NSLogAlways instead."))
-//#define debug(format, ...)          CFShow((__bridge void *)[NSString stringWithFormat:@"[%s:%d] " format, __SHORT_FILE__, __LINE__, ##__VA_ARGS__]);
-#define debug(format, ...)          NSLog(format, ##__VA_ARGS__)
+#define __SHORT_FILE__              strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
+#define DO_PRAGMA(x)                _Pragma (#x)
+#define NSLog(...)                  DO_PRAGMA(message ("Are you sure you mean NSLog?  Try NSDebugLog or NSLogAlways instead."))
+#define debug(format, ...)          CFShow((__bridge void *)[NSString stringWithFormat:@"[%s:%d] " format, __SHORT_FILE__, __LINE__, ##__VA_ARGS__]);
+//#define debug(format, ...)          NSLog(format, ##__VA_ARGS__)
 
 #ifdef DEBUG
 #define DEBUG_INTERNAL 1
 #else
-#define DEBUG_INTERNAL 1
+#define DEBUG_INTERNAL 0
 #endif
 
 #ifdef DEBUG_INTERNAL
