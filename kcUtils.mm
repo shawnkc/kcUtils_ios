@@ -7,63 +7,67 @@
 #include <net/if_dl.h>
 #endif
 
-static const char *InitAslClient(const char *logClientName) {
+const char *InitLoggingClient(const char *logClientName) {
     static dispatch_once_t onceToken;
     // This is to make the client a bit unique so we and clients can
     // independently set the log filter level and not conflict
-    static const char *constClientName = __FILE__;
     static char *clientName = NULL;
+    
     if (logClientName != NULL) {
         dispatch_once(&onceToken, ^{
             clientName = (char *)malloc(strlen(logClientName));
             strcpy(clientName, logClientName);
         });
     }
-    return clientName ? (const char *)clientName : constClientName;
+    
+    return clientName ? (const char *)clientName : NULL;
 }
 
-static aslclient GetAslClient() {
+aslclient GetAslClient() {
     static dispatch_once_t onceToken;
     static aslclient aslclient;
-    dispatch_once(&onceToken, ^{
-        aslclient = asl_open(NULL, InitAslClient(NULL), ASL_OPT_STDERR);
-    });
-    return aslclient;
+    const char *clientName = InitLoggingClient(NULL);
+    
+    if (clientName != NULL) {
+        dispatch_once(&onceToken, ^{
+            aslclient = asl_open(NULL, clientName, ASL_OPT_STDERR);
+        });
+    }
+    return clientName ? aslclient : NULL;
+}
+
+static int loggingLevel = COMPILE_TIME_LOG_LEVEL;
+void SetLoggingLevel(int level) {
+    loggingLevel = level;
+    asl_set_filter(GetAslClient(), ASL_FILTER_MASK_UPTO(level));
+}
+
+static int GetLoggingLevel() {
+    return loggingLevel;
 }
 
 #define __MAKE_LOG_FUNCTION(LEVEL, NAME) \
 OBJC_EXPORT void NAME(NSString *format, ...) { \
-    va_list args; \
-    va_start(args, format); \
-    NSString *message = [[NSString alloc] initWithFormat:format arguments:args]; \
-    asl_log(GetAslClient(), NULL, LEVEL, "%s", [message UTF8String]); \
-    va_end(args); \
-} \
-OBJC_EXPORT void NAME ## If(bool test, NSString *format, ...) { \
-    if (test) { \
+    if (LEVEL <= GetLoggingLevel()) { \
         va_list args; \
         va_start(args, format); \
-        NSString *message = [[NSString alloc] initWithFormat:format arguments:args]; \
-        asl_log(GetAslClient(), NULL, LEVEL, "%s", [message UTF8String]); \
+        NSString *buffer = [[NSString alloc] initWithFormat:format arguments:args]; \
+        ASL_PREFILTER_LOG(GetAslClient(), NULL, LEVEL, "%s: %s", InitLoggingClient(NULL), [buffer UTF8String]); \
+        closelog(); \
+        va_end(args); \
+    } \
+} \
+OBJC_EXPORT void NAME ## If(bool test, NSString *format, ...) { \
+    if (test && (LEVEL <= GetLoggingLevel())) { \
+        va_list args; \
+        va_start(args, format); \
+        NSString *buffer = [[NSString alloc] initWithFormat:format arguments:args]; \
+        ASL_PREFILTER_LOG(GetAslClient(), NULL, LEVEL, "%s: %s", InitLoggingClient(NULL), [buffer UTF8String]); \
         va_end(args); \
     } \
 } \
 void NAME ## C(const char *format, ...) { \
-    va_list args; \
-    va_start(args, format); \
-    static size_t bufferSize = 256; \
-    static char *buffer = (char *)malloc(bufferSize); \
-    size_t newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
-    while (newBufferSize >= bufferSize) { \
-        bufferSize = bufferSize * 2; \
-        buffer = (char *)realloc(buffer, bufferSize); \
-        newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
-    } \
-    asl_log(GetAslClient(), NULL, ASL_LEVEL_WARNING, "%s", buffer); \
-    va_end(args); \
-}\
-void NAME ## CIf(bool test, const char *format, ...) { \
-    if (test) { \
+    if (LEVEL <= GetLoggingLevel()) { \
         va_list args; \
         va_start(args, format); \
         static size_t bufferSize = 256; \
@@ -74,7 +78,23 @@ void NAME ## CIf(bool test, const char *format, ...) { \
             buffer = (char *)realloc(buffer, bufferSize); \
             newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
         } \
-        asl_log(GetAslClient(), NULL, ASL_LEVEL_WARNING, "%s", buffer); \
+        ASL_PREFILTER_LOG(GetAslClient(), NULL, LEVEL, "%s: %s", InitLoggingClient(NULL), buffer); \
+        va_end(args); \
+    } \
+}\
+void NAME ## CIf(bool test, const char *format, ...) { \
+    if (test && (LEVEL <= GetLoggingLevel())) { \
+        va_list args; \
+        va_start(args, format); \
+        static size_t bufferSize = 256; \
+        static char *buffer = (char *)malloc(bufferSize); \
+        size_t newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
+        while (newBufferSize >= bufferSize) { \
+            bufferSize = bufferSize * 2; \
+            buffer = (char *)realloc(buffer, bufferSize); \
+            newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
+        } \
+        ASL_PREFILTER_LOG(GetAslClient(), NULL, LEVEL, "%s: %s", InitLoggingClient(NULL), buffer); \
         va_end(args); \
     } \
 }
