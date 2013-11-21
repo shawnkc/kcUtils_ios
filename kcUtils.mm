@@ -7,6 +7,73 @@
 #include <net/if_dl.h>
 #endif
 
+static const char *InitAslClient(const char *logClientName) {
+    static dispatch_once_t onceToken;
+    // This is to make the client a bit unique so we and clients can
+    // independently set the log filter level and not conflict
+    static const char *constClientName = __FILE__;
+    static char *clientName = NULL;
+    if (logClientName != NULL) {
+        dispatch_once(&onceToken, ^{
+            clientName = (char *)malloc(strlen(logClientName));
+            strcpy(clientName, logClientName);
+        });
+    }
+    return clientName ? (const char *)clientName : constClientName;
+}
+
+static aslclient GetAslClient() {
+    static dispatch_once_t onceToken;
+    static aslclient aslclient;
+    dispatch_once(&onceToken, ^{
+        aslclient = asl_open(NULL, InitAslClient(NULL), ASL_OPT_STDERR);
+    });
+    return aslclient;
+}
+
+#define __MAKE_LOG_FUNCTION(LEVEL, NAME) \
+OBJC_EXPORT void NAME(NSString *format, ...) { \
+    va_list args; \
+    va_start(args, format); \
+    NSString *message = [[NSString alloc] initWithFormat:format arguments:args]; \
+    asl_log(GetAslClient(), NULL, LEVEL, "%s", [message UTF8String]); \
+    va_end(args); \
+} \
+OBJC_EXPORT void NAME ## If(bool test, NSString *format, ...) { \
+    if (test) { \
+        va_list args; \
+        va_start(args, format); \
+        NSString *message = [[NSString alloc] initWithFormat:format arguments:args]; \
+        asl_log(GetAslClient(), NULL, LEVEL, "%s", [message UTF8String]); \
+        va_end(args); \
+    } \
+} \
+OBJC_EXPORT void NAME ## C(char *format, ...) { \
+    va_list args; \
+    va_start(args, format); \
+    asl_log(GetAslClient(), NULL, LEVEL, format, args); \
+    va_end(args); \
+}\
+OBJC_EXPORT void NAME ## CIf(bool test, char *format, ...) { \
+    if (test) { \
+        va_list args; \
+        va_start(args, format); \
+        asl_log(GetAslClient(), NULL, LEVEL, format, args); \
+        va_end(args); \
+    } \
+}
+
+__MAKE_LOG_FUNCTION(ASL_LEVEL_EMERG,    LogEmergency)
+__MAKE_LOG_FUNCTION(ASL_LEVEL_ALERT,    LogAlert)
+__MAKE_LOG_FUNCTION(ASL_LEVEL_CRIT,     LogCritical)
+__MAKE_LOG_FUNCTION(ASL_LEVEL_ERR,      LogError)
+__MAKE_LOG_FUNCTION(ASL_LEVEL_WARNING,  LogWarning)
+__MAKE_LOG_FUNCTION(ASL_LEVEL_NOTICE,   LogNotice)        
+__MAKE_LOG_FUNCTION(ASL_LEVEL_INFO,     LogInfo)
+__MAKE_LOG_FUNCTION(ASL_LEVEL_DEBUG,    LogDebug)
+
+#undef __MAKE_LOG_FUNCTION
+
 
 @implementation kcUtils
 

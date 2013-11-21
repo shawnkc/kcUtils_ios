@@ -1,29 +1,35 @@
 #import <Foundation/Foundation.h>
+#include <asl.h>
 
 // Tricky Preprocessor macros to warn when using NSLog,
-// allow NSDebugLog() and NSLogAlways() with conditional variants.
 #define __SHORT_FILE__              strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 #define DO_PRAGMA(x)                _Pragma (#x)
-#define NSLog(...)                  DO_PRAGMA(message ("Are you sure you mean NSLog?  Try NSDebugLog or NSLogAlways instead."))
-#define debug(format, ...)          CFShow((__bridge void *)[NSString stringWithFormat:@"[%s:%d] " format, __SHORT_FILE__, __LINE__, ##__VA_ARGS__]);
-//#define debug(format, ...)          NSLog(format, ##__VA_ARGS__)
+#define NSLog(...)                  DO_PRAGMA(message ("Are you sure you mean NSLog?  Try LogWarning/LogNotice/LogDebug instead."))
 
+// Creates all the NSString and char* based logging C-functions and their conditional variants
+#define __MAKE_LOG_FUNCTION_PROTO(NAME) \
+    OBJC_EXPORT void NAME(NSString *format, ...); \
+    OBJC_EXPORT void NAME ## If(bool test, NSString *format, ...); \
+    OBJC_EXPORT void NAME ## C(char *format, ...);\
+    OBJC_EXPORT void NAME ## CIf(bool test, char *format, ...);
+__MAKE_LOG_FUNCTION_PROTO(LogEmergency)     // Always shown in console/system log
+__MAKE_LOG_FUNCTION_PROTO(LogAlert)         // Always shown in console/system log
+__MAKE_LOG_FUNCTION_PROTO(LogCritical)      // Always shown in console/system log
+__MAKE_LOG_FUNCTION_PROTO(LogError)         // Always shown in console/system log
+__MAKE_LOG_FUNCTION_PROTO(LogWarning)       // Always shown in console/system log
+__MAKE_LOG_FUNCTION_PROTO(LogNotice)        // Only shown in console/system log on debug builds, but can be shown via API call
+__MAKE_LOG_FUNCTION_PROTO(LogInfo)          // Use for debugging only, won't ever be in the console/system log, only in the debugging log
+__MAKE_LOG_FUNCTION_PROTO(LogDebug)         // Use for debugging only, won't ever be in the console/system log, only in the debugging log
+#undef __MAKE_LOG_FUNCTION_PROTO
+
+#ifndef COMPILE_TIME_LOG_LEVEL
 #ifdef DEBUG
-#define DEBUG_INTERNAL 1
+#define COMPILE_TIME_LOG_LEVEL ASL_LEVEL_NOTICE
 #else
-#define DEBUG_INTERNAL 0
+#define COMPILE_TIME_LOG_LEVEL ASL_LEVEL_WARNING
+#endif
 #endif
 
-#ifdef DEBUG_INTERNAL
-#define NSDebugLog(...)             debug(__VA_ARGS__)
-#define NSDebugLogIf(test, ...)     if (test) { debug(__VA_ARGS__); }
-#else
-#define NSDebugLog(...)
-#define NSDebugLogIf(test, ...)
-#endif
-
-#define NSLogAlways(...)            debug(__VA_ARGS__)
-#define NSLogAlwaysIf(test, ...)    if (test) { debug(__VA_ARGS__); }
 
 @interface kcUtils : NSObject
 
