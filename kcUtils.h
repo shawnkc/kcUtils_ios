@@ -10,8 +10,8 @@
 #define __MAKE_LOG_FUNCTION_PROTO(NAME) \
     OBJC_EXPORT void NAME(NSString *format, ...); \
     OBJC_EXPORT void NAME ## If(bool test, NSString *format, ...); \
-    OBJC_EXPORT void NAME ## C(char *format, ...);\
-    OBJC_EXPORT void NAME ## CIf(bool test, char *format, ...);
+    OBJC_EXPORT void NAME ## C(const char *format, ...);\
+    OBJC_EXPORT void NAME ## CIf(bool test, const char *format, ...);
 __MAKE_LOG_FUNCTION_PROTO(LogEmergency)     // Always shown in console/system log
 __MAKE_LOG_FUNCTION_PROTO(LogAlert)         // Always shown in console/system log
 __MAKE_LOG_FUNCTION_PROTO(LogCritical)      // Always shown in console/system log

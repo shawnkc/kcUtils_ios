@@ -48,17 +48,33 @@ OBJC_EXPORT void NAME ## If(bool test, NSString *format, ...) { \
         va_end(args); \
     } \
 } \
-OBJC_EXPORT void NAME ## C(char *format, ...) { \
+void NAME ## C(const char *format, ...) { \
     va_list args; \
     va_start(args, format); \
-    asl_log(GetAslClient(), NULL, LEVEL, format, args); \
+    static size_t bufferSize = 256; \
+    static char *buffer = (char *)malloc(bufferSize); \
+    size_t newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
+    while (newBufferSize >= bufferSize) { \
+        bufferSize = bufferSize * 2; \
+        buffer = (char *)realloc(buffer, bufferSize); \
+        newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
+    } \
+    asl_log(GetAslClient(), NULL, ASL_LEVEL_WARNING, "%s", buffer); \
     va_end(args); \
 }\
-OBJC_EXPORT void NAME ## CIf(bool test, char *format, ...) { \
+void NAME ## CIf(bool test, const char *format, ...) { \
     if (test) { \
         va_list args; \
         va_start(args, format); \
-        asl_log(GetAslClient(), NULL, LEVEL, format, args); \
+        static size_t bufferSize = 256; \
+        static char *buffer = (char *)malloc(bufferSize); \
+        size_t newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
+        while (newBufferSize >= bufferSize) { \
+            bufferSize = bufferSize * 2; \
+            buffer = (char *)realloc(buffer, bufferSize); \
+            newBufferSize = vsnprintf(buffer, bufferSize, format, args); \
+        } \
+        asl_log(GetAslClient(), NULL, ASL_LEVEL_WARNING, "%s", buffer); \
         va_end(args); \
     } \
 }
