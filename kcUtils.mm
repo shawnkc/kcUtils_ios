@@ -172,7 +172,7 @@ __MAKE_LOG_FUNCTION(ASL_LEVEL_DEBUG,    LogDebug)
     
     // Befor going any further...
     if (errorFlag != NULL) {
-        NSDebugLog(@"Error: %@", errorFlag);
+        LogDebug(@"Error: %@", errorFlag);
         return errorFlag;
     }
     
@@ -189,7 +189,7 @@ __MAKE_LOG_FUNCTION(ASL_LEVEL_DEBUG,    LogDebug)
     NSString *macAddressString = [NSString stringWithFormat:@"%02X:%02X:%02X:%02X:%02X:%02X",
                                   macAddress[0], macAddress[1], macAddress[2],
                                   macAddress[3], macAddress[4], macAddress[5]];
-    NSDebugLog(@"Mac Address: %@", macAddressString);
+    LogDebug(@"Mac Address: %@", macAddressString);
     
     // Release the buffer memory
     free(msgBuffer);
