@@ -46,6 +46,7 @@ __MAKE_LOG_FUNCTION_PROTO(LogDebug)         // Use for debugging only, won't eve
 + (NSString *)getPathFromBundle:(NSString *)filename;
 + (NSString *)copyFromBundle:(NSString *)filename;
 + (NSDate *)fileTimestamp:(NSString *)fullFilename;
++ (unsigned long long)currentMs;
 
 #if TARGET_IPHONE_SIMULATOR
 + (NSString *)getMacAddress;

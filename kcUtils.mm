@@ -216,6 +216,12 @@ __MAKE_LOG_FUNCTION(ASL_LEVEL_DEBUG,    LogDebug)
     
     return macAddressString;
 }
+
 #endif
+
++ (unsigned long long)currentMs {
+    unsigned long long milliseconds = (unsigned long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+    return milliseconds;
+}
 
 @end
