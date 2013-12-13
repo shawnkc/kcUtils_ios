@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#include <pthread.h>
 #include <asl.h>
 #include <fcntl.h>
 #include <syslog.h>
@@ -38,6 +39,13 @@ __MAKE_LOG_FUNCTION_PROTO(LogDebug)         // Use for debugging only, won't eve
 #endif
 #endif
 
+class ScopedMutex {
+public:
+    ScopedMutex(pthread_mutex_t *mutex) { _mutex = mutex; pthread_mutex_lock(_mutex); }
+    ~ScopedMutex() { pthread_mutex_unlock(_mutex); }
+private:
+    pthread_mutex_t *_mutex;
+};
 
 @interface kcUtils : NSObject
 
